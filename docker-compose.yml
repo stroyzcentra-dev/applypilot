@@ -1,0 +1,22 @@
+services:
+  desktop:
+    build: ./desktop
+    image: applypilot-desktop
+    container_name: applypilot-desktop
+    shm_size: 1gb
+    # Chromium's own sandbox needs to create namespaces, which Docker's default
+    # seccomp profile only allows with SYS_ADMIN. The alternative, --no-sandbox,
+    # would leave the renderer that loads untrusted web pages unsandboxed.
+    cap_add:
+      - SYS_ADMIN
+    ports:
+      # Bound to localhost only: the viewer has no password, so never expose it publicly.
+      - "127.0.0.1:6080:6080"
+      - "127.0.0.1:9223:9223"
+    volumes:
+      # Keeps the browser profile, so sites you sign in to stay signed in.
+      - browser-profile:/home/agent/profile
+    restart: unless-stopped
+
+volumes:
+  browser-profile:

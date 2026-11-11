@@ -1,0 +1,25 @@
+company: Fernbrook AI
+title: Machine Learning Engineer
+description: |
+  Fernbrook builds demand forecasting for regional grocery chains. You'll train
+  and evaluate gradient-boosted and neural models, ship them behind Python
+  services, and own the pipeline from feature engineering to monitoring.
+  Our stack is Python, scikit-learn, XGBoost, PyTorch and Postgres.
+  We sponsor visas for this role.
+questions:
+  - label: Tell us about a machine learning project you've worked on.
+    kind: long_text
+    expect: answer
+  - label: What are your salary expectations?
+    kind: short_text
+    expect: skip
+  - label: Will you now or in the future require visa sponsorship?
+    kind: single_choice
+    options: ["Yes", "No"]
+    expect: answer
+  - label: What is your earliest start date?
+    kind: short_text
+    expect: answer
+  - label: Which deep learning frameworks have you used in production?
+    kind: short_text
+    expect: skip

@@ -1,0 +1,38 @@
+# Where to look. These are public ATS job boards with official JSON endpoints.
+# The board token is the company's slug in its careers URL, for example
+#   boards.greenhouse.io/<token>, jobs.lever.co/<token>, jobs.ashbyhq.com/<token>
+sources:
+  greenhouse: [anthropic, stripe, airbnb]
+  lever: [palantir]
+  ashby: [ramp, linear]
+
+matcher:
+  model: claude-opus-5-5
+  # Jobs scoring below this are logged but not drafted.
+  min_score_to_draft: 70
+  # Cap LLM scoring per sweep so a big sweep can't run up a surprise bill.
+  max_scored_per_sweep: 40
+
+applicant:
+  # auto:     submit without asking when score >= auto_submit_min_score
+  #           and the Verifier passes every draft; otherwise wait for approval
+  # approve:  always stop before the final Submit click
+  # draft:    never submit; only prepare materials
+  mode: auto
+  auto_submit_min_score: 85
+  # Hard daily ceiling on submissions in any mode.
+  daily_submit_cap: 10
+
+automation:
+  # docker: Chromium in a sandboxed desktop you watch in the dashboard (`applypilot desktop up`)
+  # local:  a visible Chromium window on this machine (`uv run playwright install chromium`)
+  backend: docker
+  # Sites whose terms forbid automation (LinkedIn, Indeed, Glassdoor) are handed to you.
+  # List a domain here only if you accept the risk to your account on that site.
+  # You'll still be warned every time, and you'll still submit by hand.
+  accept_tos_risk_for: []
+
+schedule:
+  sweep_every_hours: 6
+
+database: data/applypilot.db

@@ -1,0 +1,77 @@
+# The fact bank: the ONLY source of truth about you.
+#
+# Every claim ApplyPilot writes (fit reasons, resume bullets, cover letters,
+# form answers) must cite one or more fact IDs from this file. Anything it
+# can't trace back to a fact is rejected. If it isn't here, it won't be said.
+#
+# Write facts as small, specific, checkable statements. One claim per fact.
+# Numbers beat adjectives.
+
+person:
+  name: Jordan Example
+  email: jordan@example.com
+  phone: "+1 555 0100"
+  location: Raleigh, NC, USA
+  links:
+    github: https://github.com/jordan-example
+    linkedin: https://www.linkedin.com/in/jordan-example
+    portfolio: https://jordan.example.com
+  work_authorization: US citizen
+  needs_sponsorship: false
+
+preferences:
+  target_titles:
+    - software engineer
+    - backend engineer
+    - machine learning engineer
+  avoid_title_keywords: [staff, principal, director, manager, intern]
+  locations: [Raleigh, Durham, "North Carolina"]
+  remote_ok: true
+  min_base_salary_usd: 90000
+  exclude_companies: []
+  max_posting_age_days: 30
+
+# Answers to the logistics questions most forms ask. The agent answers these
+# questions only from here; anything left blank is left for you to answer.
+answers:
+  work_location: Raleigh, NC
+  willing_to_relocate: false
+  open_to_remote: true
+  earliest_start: Two weeks after accepting an offer
+  salary_expectation: null      # left for you, per application
+  how_did_you_hear: Company careers page
+  self_identification: ask_me   # or "decline" to pick decline-to-answer options
+  extra:
+    notice_period: Two weeks
+
+facts:
+  - id: exp-acme-api
+    kind: experience
+    org: Acme Logistics
+    role: Software Engineer
+    start: 2024-06
+    end: present
+    text: Built and own a FastAPI service that prices freight quotes, handling about 40k requests per day.
+    skills: [Python, FastAPI, PostgreSQL, AWS]
+
+  - id: exp-acme-latency
+    kind: achievement
+    org: Acme Logistics
+    text: Cut p95 latency of the quote service from 900ms to 180ms by adding a Redis cache and rewriting two N+1 queries.
+    skills: [Redis, PostgreSQL, Performance tuning]
+
+  - id: proj-applypilot
+    kind: project
+    text: Built ApplyPilot, an open-source multi-agent job search assistant using the Claude API, Playwright and SQLite.
+    skills: [Python, Claude API, LLM agents, Playwright]
+    evidence: https://github.com/jordan-example/applypilot
+
+  - id: edu-ncsu
+    kind: education
+    org: NC State University
+    text: B.S. in Computer Science, 2024.
+
+  - id: skill-ml
+    kind: skill
+    text: Trained and evaluated gradient-boosted models with scikit-learn and XGBoost in two course projects.
+    skills: [scikit-learn, XGBoost, Machine learning]

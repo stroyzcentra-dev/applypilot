@@ -1,0 +1,227 @@
+/* Palette: a carbon-copy application form. Pale blue-grey paper, navy ink,
+   carbon violet for the agent, teal for you. Amber and red carry policy only. */
+:root {
+  --paper: #eef1f6;
+  --sheet: #f8f9fc;
+  --ink: #16233b;
+  --ink-soft: #4a5872;
+  --rule: #c7cfdc;
+  --agent: #4b3fa8;
+  --agent-wash: #e4e1f6;
+  --you: #0e7c66;
+  --you-wash: #dcefe9;
+  --caution: #9a5b00;
+  --caution-wash: #fbefd9;
+  --stop: #b42318;
+  --stop-wash: #fbe4e1;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+a { color: var(--agent); text-underline-offset: 2px; }
+code { font-size: 0.92em; background: var(--sheet); padding: 0.1em 0.35em; border-radius: 4px; }
+
+:focus-visible { outline: 3px solid var(--agent); outline-offset: 2px; }
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--rule);
+}
+.wordmark {
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.masthead nav a { color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+
+main { padding: 2rem; max-width: 1480px; margin: 0 auto; }
+
+h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 800; margin: 0 0 0.5rem; }
+.lede { color: var(--ink-soft); max-width: 62ch; margin: 0 0 2rem; }
+.muted { color: var(--ink-soft); }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--sheet);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: #22345a; }
+button.quiet { background: transparent; color: var(--ink); border-color: var(--rule); }
+button.quiet:hover:not(:disabled) { border-color: var(--ink); background: var(--sheet); }
+button:disabled { opacity: 0.55; cursor: progress; }
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  background: var(--sheet);
+  border-left: 4px solid var(--rule);
+  max-width: 80ch;
+}
+.notice-error { background: var(--stop-wash); border-left-color: var(--stop); }
+.notice-caution { background: var(--caution-wash); border-left-color: var(--caution); }
+
+/* ---- Jobs list: a ruled register, score in the margin ------------------- */
+
+.job-list { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.job {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  gap: 1.25rem;
+  align-items: start;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.score {
+  font-size: 2.25rem;
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+.job h2 { font-size: 1.125rem; margin: 0; font-weight: 700; }
+.job h2 a { color: var(--ink); text-decoration: none; }
+.job h2 a:hover { text-decoration: underline; }
+.job-meta { margin: 0.15rem 0 0; color: var(--ink-soft); display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.status { font-size: 0.85rem; padding: 0 0.5rem; border: 1px solid var(--rule); border-radius: 999px; }
+.job-summary { margin: 0.5rem 0 0; max-width: 72ch; font-size: 0.95rem; }
+.job-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+
+.policy { font-size: 0.85rem; font-weight: 600; padding-left: 0.9rem; position: relative; }
+.policy::before {
+  content: ""; position: absolute; left: 0; top: 0.4em;
+  width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor;
+}
+.policy-allowed { color: var(--you); }
+.policy-caution { color: var(--caution); }
+.policy-prohibited { color: var(--stop); }
+
+/* ---- Run page ------------------------------------------------------------ */
+
+.run-head h1 { font-size: 1.6rem; }
+
+/* The one loud element: who is in control of the browser. */
+.driver {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  border-radius: var(--radius-panel);
+  color: #fff;
+  background: var(--agent);
+  transition: background-color 240ms ease;
+}
+.driver strong { display: block; font-size: 1.35rem; letter-spacing: -0.01em; }
+.driver span { opacity: 0.85; }
+.driver-user { background: var(--you); }
+.driver-paused { background: var(--ink-soft); }
+.driver-waiting_approval { background: var(--ink); }
+.driver-done { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); }
+.driver-controls { display: flex; gap: 0.5rem; }
+.driver button { background: #fff; color: var(--ink); border-color: #fff; }
+.driver button.quiet { background: transparent; color: inherit; border-color: rgb(255 255 255 / 0.6); }
+.driver-done button.quiet { border-color: var(--rule); }
+
+.decision {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--sheet);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-panel);
+}
+.decision p { margin: 0; max-width: 70ch; }
+.decision-buttons { display: flex; gap: 0.5rem; }
+
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.25rem; }
+.screen {
+  aspect-ratio: 16 / 10;
+  background: var(--ink);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.screen iframe { width: 100%; height: 100%; border: 0; }
+.screen .muted { color: var(--rule); }
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: calc((100vw - 4rem - 23.25rem) * 0.625);
+  min-height: 24rem;
+  overflow-y: auto;
+  border-left: 2px solid var(--rule);
+}
+.step { display: grid; grid-template-columns: 2rem 1fr; gap: 0.5rem; padding: 0.6rem 0.75rem 0.6rem 0; }
+.step-n { font-variant-numeric: tabular-nums; color: var(--ink-soft); text-align: right; font-size: 0.85rem; padding-top: 0.1rem; }
+.step-title { margin: 0; font-weight: 600; }
+.step-detail { margin: 0.15rem 0 0; color: var(--ink-soft); font-size: 0.9rem; white-space: pre-line; overflow-wrap: anywhere; }
+.step img { display: block; width: 100%; margin-top: 0.4rem; border: 1px solid var(--rule); border-radius: 4px; }
+.step-action .step-n { color: var(--agent); font-weight: 700; }
+
+/* Drafted answers: the text reads first; its sources sit beside it, smaller. */
+.draft { margin-top: 0.3rem; }
+.draft-sentence { margin: 0 0 0.35rem; font-size: 0.92rem; }
+.draft-sources { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.35rem; vertical-align: 1px; }
+.source {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  color: var(--agent);
+  background: var(--agent-wash);
+}
+.draft-issues { margin: 0.3rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; color: var(--stop); }
+.step-draft { border-left: 3px solid var(--agent); }
+.step-draft_failed { background: var(--stop-wash); }
+.step-warning { background: var(--caution-wash); }
+.step-handoff, .step-error { background: var(--stop-wash); }
+.step-needs_input { background: var(--you-wash); }
+
+@media (max-width: 960px) {
+  main { padding: 1rem; }
+  .masthead { padding: 1rem; }
+  .workspace { grid-template-columns: 1fr; }
+  .timeline { max-height: 28rem; min-height: 0; border-left: 0; border-top: 2px solid var(--rule); }
+  .job { grid-template-columns: 3rem 1fr; }
+  .score { font-size: 1.75rem; }
+  .job-actions { grid-column: 2; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver { transition: none; }
+}

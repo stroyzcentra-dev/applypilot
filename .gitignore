@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Local secrets and personal data: never commit these
+.env
+data/
+profile.yaml
+settings.yaml
+*.db
+
+# Eval run outputs (contain drafts built from your profile)
+evals/results/

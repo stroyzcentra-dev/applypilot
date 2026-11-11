@@ -1,0 +1,22 @@
+company: Vaultpoint
+title: Backend Engineer, Compliance Platform
+description: |
+  Vaultpoint helps hospitals keep audit evidence for HIPAA and SOC 2. You'll
+  build the Python services that collect and store that evidence. Prior work
+  on compliance automation or regulated systems is required. You must be
+  authorized to work in the United States.
+questions:
+  - label: Describe your experience preparing for SOC 2 or HIPAA audits.
+    kind: long_text
+    expect: skip
+  - label: Are you legally authorized to work in the United States?
+    kind: single_choice
+    options: ["Yes", "No"]
+    expect: answer
+  - label: Have you ever been convicted of a felony?
+    kind: single_choice
+    options: ["Yes", "No"]
+    expect: skip
+  - label: What backend frameworks have you shipped production services with?
+    kind: short_text
+    expect: answer
