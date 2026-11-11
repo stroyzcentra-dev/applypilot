@@ -23,7 +23,7 @@ FETCHERS: dict[str, Fetcher] = {
     "ashby": ashby.fetch,
 }
 
-USER_AGENT = "ApplyPilot/0.1 (+https://github.com/applypilot/applypilot)"
+USER_AGENT = "ApplyPilot/0.1 (+https://github.com/stroyzcentra-dev/applypilot)"
 
 
 @dataclass

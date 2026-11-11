@@ -31,7 +31,7 @@ three rules:
 Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/<you>/applypilot && cd applypilot
+git clone https://github.com/stroyzcentra-dev/applypilot && cd applypilot
 uv sync
 uv run applypilot init          # creates profile.yaml and settings.yaml
 # edit profile.yaml with your real facts, settings.yaml with the boards to watch
