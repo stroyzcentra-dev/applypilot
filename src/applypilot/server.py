@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -89,6 +90,29 @@ def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
         a = settings.automation
         return {"backend": a.backend, "novnc_url": a.novnc_url, "mode": settings.applicant.mode,
                 "drafting": agents.writer is not None}
+
+    @app.get("/api/status")
+    async def status() -> dict:
+        """Setup checklist for the first-run guide. Booleans and counts only: never a key."""
+        desktop = False
+        if settings.automation.backend == "docker":
+            try:
+                async with httpx.AsyncClient(timeout=1.5) as client:
+                    desktop = (await client.get(f"{settings.automation.cdp_url}/json/version")).is_success
+            except httpx.HTTPError:
+                desktop = False
+        else:
+            desktop = True  # local backend opens its own browser per run
+        counts = store.counts()
+        return {
+            "backend": settings.automation.backend,
+            "desktop_running": desktop,
+            "api_key_set": agents.writer is not None,
+            "example_profile": profile.person.email.endswith("@example.com"),
+            "facts": len(profile.facts),
+            "jobs": sum(n for s, n in counts.items() if s != ApplicationStatus.FILTERED_OUT),
+            "mode": settings.applicant.mode,
+        }
 
     @app.get("/api/jobs")
     def jobs(min_score: int | None = None, limit: int = 100) -> list[dict]:

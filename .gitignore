@@ -9,6 +9,8 @@ build/
 
 # Local secrets and personal data: never commit these
 .env
+.env.*
+!.env.example
 data/
 profile.yaml
 settings.yaml

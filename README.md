@@ -74,6 +74,10 @@ uv run applypilot serve          # API on :8765
 cd web && npm install && npm run dev   # dashboard on http://localhost:3100
 ```
 
+The first time you open the dashboard, a guide walks through setup with a live
+checklist (API running, desktop up, your own profile, API key present, jobs
+found). Reopen it any time from **How it works** in the header.
+
 - **Who's driving** is always shown at the top. **Pause** stops the agent before
   its next action; **Take over** hands you the mouse and keyboard in the live
   screen; **Hand back** lets the agent continue from wherever you left the page.
@@ -223,6 +227,19 @@ handed to you; the agent doesn't try to get around them.
   - [ ] Computer-use fallback for forms the filler can't read
 - [ ] **M4: Track.** Scheduler service, inbox sync to detect replies and
       rejections, follow-up reminders, weekly digest.
+
+## Keeping your keys and data private
+
+- Your API key lives only in `.env`, which is git-ignored (as is every
+  `.env.*` except `.env.example`). The dashboard never receives it; the setup
+  guide only reports whether one is set.
+- `profile.yaml`, `settings.yaml`, `data/` (screenshots, resumes, the database)
+  and eval outputs are git-ignored too.
+- Every service listens on `127.0.0.1` only: API, dashboard, noVNC viewer and
+  the browser's DevTools port.
+- `tests/test_no_secrets.py` fails if any tracked file looks like it holds a
+  credential, and CI runs it on every push. GitHub secret scanning and push
+  protection are on for this repository.
 
 ## Development
 

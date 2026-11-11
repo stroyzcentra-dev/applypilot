@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Public_Sans } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
+import { Guide } from "./guide";
 
 const sans = Public_Sans({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="wordmark">ApplyPilot</Link>
           <nav>
             <Link href="/">Jobs</Link>
+            <Guide />
           </nav>
         </header>
         <main>{children}</main>
