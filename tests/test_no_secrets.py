@@ -42,7 +42,8 @@ def test_no_credentials_in_tracked_files():
 
 
 def test_env_files_are_ignored():
-    for name in (".env", ".env.local", ".env.production"):
+    for name in (".env", ".env.local", ".env.production", "profile.yaml", "settings.yaml",
+                 "profile.yaml.bak", "settings.yaml.bak"):
         r = subprocess.run(["git", "check-ignore", "-q", name], cwd=REPO)
-        assert r.returncode == 0, f"{name} isn't git-ignored"
+        assert r.returncode == 0, f"{name} isn't git-ignored; it holds personal data"
     assert subprocess.run(["git", "check-ignore", "-q", ".env.example"], cwd=REPO).returncode == 1

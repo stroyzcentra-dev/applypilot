@@ -1,13 +1,17 @@
-"""HTTP API for the live dashboard (web/).
+"""HTTP API for the dashboard (web/).
 
-Runs execute inside this process, so the dashboard's controls (pause, take
-over, submit decision) act on the same RunControl the agent is checking.
+Everything the dashboard can change lives in AppState: the profile, the
+settings, the API key and the agents built from them. Saving any of them takes
+effect for the next action without a restart. Runs execute inside this process,
+so the dashboard's controls act on the same RunControl the agent is checking.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
@@ -19,14 +23,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from applypilot.applicant.run import STARTABLE, Agents, Run, run_application
-from applypilot.config import Settings, load_profile, load_settings
+from applypilot.config import Settings, ensure_config_files, load_profile, load_settings
 from applypilot.llm import LLM
 from applypilot.models import ApplicationStatus, Profile
 from applypilot.policy import decide
-from applypilot.profile_api import register_profile_routes
 from applypilot.store import JobRow, Store
 from applypilot.tailor import Tailor
 from applypilot.writer import Critic, Writer
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 class StartRun(BaseModel):
@@ -38,7 +43,7 @@ class ControlAction(BaseModel):
                     "open_page", "cancel"]
 
 
-def _job_json(r: JobRow, settings: Settings) -> dict:
+def job_json(r: JobRow, settings: Settings) -> dict:
     url = r.posting.apply_url or r.url
     d = decide(url, settings.automation.accept_tos_risk_for)
     return {
@@ -58,90 +63,123 @@ def _run_json(run: Run) -> dict:
 
 
 class AppState:
-    """The loaded profile and the agents built from it. Rebuilt when the profile is saved,
-    so the next run uses the new facts. A run already in progress keeps the old ones."""
+    """Profile, settings, API key and agents. Each setter rebuilds what depends on it;
+    a run already in progress keeps the objects it started with."""
 
-    def __init__(self, profile: Profile, llm: LLM | None):
-        self.llm = llm
-        self.set_profile(profile)
+    def __init__(self, profile_path: Path, settings_path: Path, env_path: Path,
+                 llm: LLM | None = None, key_checker: Callable[[str], None] | None = None):
+        self.profile_path, self.settings_path, self.env_path = profile_path, settings_path, env_path
+        self.settings = load_settings(settings_path)
+        self.profile = load_profile(profile_path)
+        self.store = Store(self.settings.database)
+        self._fixed_llm = llm  # tests inject a fake model; it then ignores key changes
+        self.key_checker = key_checker
+        self.llm = llm or (LLM(model=self.settings.matcher.model)
+                           if os.environ.get("ANTHROPIC_API_KEY") else None)
+        self._rebuild()
 
-    def set_profile(self, profile: Profile) -> None:
-        self.profile = profile
+    def _rebuild(self) -> None:
         if self.llm is None:
             self.agents = Agents()
         else:
-            critic = Critic(self.llm, profile)
-            self.agents = Agents(writer=Writer(self.llm, profile), critic=critic,
-                                 tailor=Tailor(self.llm, critic, profile))
+            critic = Critic(self.llm, self.profile)
+            self.agents = Agents(writer=Writer(self.llm, self.profile), critic=critic,
+                                 tailor=Tailor(self.llm, critic, self.profile))
+
+    def set_profile(self, profile: Profile) -> None:
+        self.profile = profile
+        self._rebuild()
+
+    def set_settings(self, settings: Settings) -> None:
+        model_changed = settings.matcher.model != self.settings.matcher.model
+        self.settings = settings
+        if model_changed and self.llm is not None and self._fixed_llm is None:
+            self.llm = LLM(model=settings.matcher.model)
+        self._rebuild()
+
+    def key_changed(self) -> None:
+        """Call after ANTHROPIC_API_KEY was set or removed in os.environ."""
+        if self._fixed_llm is not None:
+            return
+        self.llm = LLM(model=self.settings.matcher.model) if os.environ.get("ANTHROPIC_API_KEY") else None
+        self._rebuild()
 
 
-def create_app(profile_path: Path, settings_path: Path, llm: LLM | None = None) -> FastAPI:
-    """`llm` is injectable for tests; otherwise one is created when an API key is set."""
-    settings = load_settings(settings_path)
-    store = Store(settings.database)
+async def desktop_running(state: AppState) -> bool:
+    if state.settings.automation.backend != "docker":
+        return True  # the local backend opens its own browser per run
+    try:
+        async with httpx.AsyncClient(timeout=1.5) as client:
+            return (await client.get(f"{state.settings.automation.cdp_url}/json/version")).is_success
+    except httpx.HTTPError:
+        return False
+
+
+def create_app(
+    profile_path: Path,
+    settings_path: Path,
+    llm: LLM | None = None,
+    env_path: Path | None = None,
+    key_checker: Callable[[str], None] | None = None,
+    scheduler: bool = True,
+) -> FastAPI:
+    """`llm`, `env_path` and `key_checker` are injectable for tests."""
+    from applypilot.ops_api import OpsState, register_ops_routes
+    from applypilot.profile_api import register_profile_routes
+    from applypilot.settings_api import register_settings_routes
+
+    ensure_config_files(profile_path, settings_path)
+    state = AppState(profile_path, settings_path, env_path or REPO / ".env", llm, key_checker)
+    ops = OpsState(state)
     runs: dict[str, Run] = {}
     tasks: set[asyncio.Task] = set()
-    if llm is None and os.environ.get("ANTHROPIC_API_KEY"):
-        llm = LLM(model=settings.matcher.model)
-    state = AppState(load_profile(profile_path), llm)
 
-    app = FastAPI(title="ApplyPilot")
+    @contextlib.asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        task = asyncio.create_task(ops.schedule_loop()) if scheduler else None
+        yield
+        if task:
+            task.cancel()
+
+    app = FastAPI(title="ApplyPilot", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_methods=["*"], allow_headers=["*"],
     )
-    shots = settings.automation.screenshots_dir
-    shots.mkdir(parents=True, exist_ok=True)
-    app.mount("/screenshots", StaticFiles(directory=shots), name="screenshots")
-    resumes = settings.automation.resumes_dir
-    resumes.mkdir(parents=True, exist_ok=True)
-    app.mount("/resumes", StaticFiles(directory=resumes), name="resumes")
+    for name, directory in (("screenshots", state.settings.automation.screenshots_dir),
+                            ("resumes", state.settings.automation.resumes_dir)):
+        directory.mkdir(parents=True, exist_ok=True)
+        app.mount(f"/{name}", StaticFiles(directory=directory), name=name)
 
     def active() -> Run | None:
         return next((r for r in runs.values() if r.outcome is None), None)
 
     @app.get("/api/config")
     def config() -> dict:
-        a = settings.automation
-        return {"backend": a.backend, "novnc_url": a.novnc_url, "mode": settings.applicant.mode,
+        a = state.settings.automation
+        return {"backend": a.backend, "novnc_url": a.novnc_url, "mode": state.settings.applicant.mode,
                 "drafting": state.agents.writer is not None}
 
     @app.get("/api/status")
     async def status() -> dict:
         """Setup checklist for the first-run guide. Booleans and counts only: never a key."""
-        desktop = False
-        if settings.automation.backend == "docker":
-            try:
-                async with httpx.AsyncClient(timeout=1.5) as client:
-                    desktop = (await client.get(f"{settings.automation.cdp_url}/json/version")).is_success
-            except httpx.HTTPError:
-                desktop = False
-        else:
-            desktop = True  # local backend opens its own browser per run
-        counts = store.counts()
+        s = state.settings
+        counts = state.store.counts()
         return {
-            "backend": settings.automation.backend,
-            "desktop_running": desktop,
+            "backend": s.automation.backend,
+            "desktop_running": await desktop_running(state),
             "api_key_set": state.llm is not None,
             "example_profile": state.profile.person.email.endswith("@example.com"),
             "facts": len(state.profile.facts),
-            "jobs": sum(n for s, n in counts.items() if s != ApplicationStatus.FILTERED_OUT),
-            "mode": settings.applicant.mode,
+            "boards": len(s.sources.greenhouse) + len(s.sources.lever) + len(s.sources.ashby),
+            "jobs": sum(n for st, n in counts.items() if st != ApplicationStatus.FILTERED_OUT),
+            "mode": s.applicant.mode,
         }
-
-    @app.get("/api/jobs")
-    def jobs(min_score: int | None = None, limit: int = 100) -> list[dict]:
-        statuses = [s for s in ApplicationStatus if s not in (ApplicationStatus.FILTERED_OUT,)]
-        return [_job_json(r, settings) for r in store.list(statuses, min_score, limit)]
-
-    @app.get("/api/jobs/{job_id:path}/events")
-    def job_events(job_id: str) -> list[dict]:
-        return [e.__dict__ for e in store.events(job_id)]
 
     @app.post("/api/runs")
     async def start_run(body: StartRun) -> dict:
-        row = store.get(body.job_id)
+        row = state.store.get(body.job_id)
         if row is None:
             raise HTTPException(404, "job not found")
         if row.status not in STARTABLE:
@@ -150,10 +188,8 @@ def create_app(profile_path: Path, settings_path: Path, llm: LLM | None = None) 
             raise HTTPException(409, f"run {current.id} is still in progress; one browser, one run")
         run = Run(job_id=body.job_id)
         runs[run.id] = run
-        task = asyncio.create_task(
-            run_application(run, store=store, settings=settings, profile=state.profile,
-                            agents=state.agents)
-        )
+        task = asyncio.create_task(run_application(
+            run, store=state.store, settings=state.settings, profile=state.profile, agents=state.agents))
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         return _run_json(run)
@@ -192,6 +228,8 @@ def create_app(profile_path: Path, settings_path: Path, llm: LLM | None = None) 
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     register_profile_routes(app, state, profile_path)
+    register_settings_routes(app, state)
+    register_ops_routes(app, state, ops)
     return app
 
 

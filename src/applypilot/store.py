@@ -215,6 +215,16 @@ class Store:
         with self.tx() as c:
             return c.execute("INSERT INTO sweeps (started_at) VALUES (?)", (_now(),)).lastrowid
 
+    def last_sweep(self) -> dict | None:
+        r = self.conn.execute(
+            "SELECT started_at, finished_at, stats FROM sweeps WHERE finished_at IS NOT NULL "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if r is None:
+            return None
+        return {"started_at": r["started_at"], "finished_at": r["finished_at"],
+                "stats": json.loads(r["stats"])}
+
     def finish_sweep(self, sweep_id: int, stats: dict) -> None:
         with self.tx() as c:
             c.execute(

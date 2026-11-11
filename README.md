@@ -28,51 +28,52 @@ three rules:
 
 ## Quick start
 
-Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Needs [uv](https://docs.astral.sh/uv/), [Node.js](https://nodejs.org/) and,
+for the watchable desktop, [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-git clone https://github.com/stroyzcentra-dev/applypilot && cd applypilot
-uv sync
-uv run applypilot init          # creates profile.yaml and settings.yaml
-# edit profile.yaml with your real facts, settings.yaml with the boards to watch
-cp .env.example .env            # add ANTHROPIC_API_KEY
-uv run applypilot validate
-uv run applypilot sweep
-uv run applypilot jobs --min-score 70
-uv run applypilot show <job-id>
+git clone https://github.com/stroyzcentra-dev/applypilot
 ```
 
-`profile.yaml`, `settings.yaml`, `.env` and `data/` are git-ignored, so your
-personal data never ends up in the repo.
+Then start it. On Windows, double-click **`start-applypilot.cmd`** in the project
+folder. Anywhere else:
 
-## Commands
+```bash
+./start-applypilot.sh
+```
+
+That starts the API, the dashboard and the agent's desktop, and opens
+**http://localhost:3100**. Everything after that happens in the dashboard:
+
+| Page | What you do there |
+|---|---|
+| **Settings** | Add your Anthropic API key, the companies to watch, how picky to be, whether to search automatically, and how much the agent may submit on its own. Start or stop the agent's computer. |
+| **Profile** | Import your resume, then review and refine your facts and standard answers. |
+| **Jobs** | Find jobs, see each one's fit and why, start applications, make tailored resumes, record interviews and offers. |
+
+The first time you open it, a setup guide checks off each step as you do it.
+Your settings, profile, key and data stay on your computer in git-ignored
+files (`settings.yaml`, `profile.yaml`, `.env`, `data/`).
+
+## Command line
+
+Everything is in the dashboard, but the same actions exist as commands for
+scripting: `uv run applypilot --help`.
 
 | Command | What it does |
 |---|---|
-| `init` | Copy the example profile and settings into place |
-| `validate` | Check both files against their schemas |
-| `sweep` | Fetch new postings, filter them, score the survivors |
-| `watch --every 6` | Sweep on a timer |
-| `jobs` | List tracked jobs, best scores first (`--status`, `--min-score`) |
-| `show <id>` | Fit assessment with cited evidence per requirement, plus history |
-| `log [<id>]` | The application log, for one job or everything |
-| `mark <id> <status>` | Record an interview invite, rejection or offer by hand |
-| `tailor <id>` | Build a one-page resume PDF for one job, from your facts |
+| `start` | Start everything and open the dashboard (what the launcher runs) |
+| `sweep` / `watch` | Find jobs once, or on a timer |
+| `jobs`, `show <id>`, `log`, `mark <id> <status>` | List, inspect and update jobs |
+| `tailor <id>` | Build a one-page resume PDF for one job |
 | `eval` | Score the Writer + Verifier on the eval cases (live model calls) |
-| `desktop up` / `desktop down` | Start or stop the agent's sandboxed desktop (Docker) |
-| `serve` | Start the API the live dashboard talks to |
+| `desktop up` / `down`, `serve`, `init`, `validate` | The pieces `start` runs for you |
 
 ## Watch it apply
 
 The agent works in its own computer: a small Linux desktop in Docker running
 Chromium. The dashboard shows that screen live, next to a timeline of every step
 the agent takes and why.
-
-```bash
-uv run applypilot desktop up     # first run builds the image
-uv run applypilot serve          # API on :8765
-cd web && npm install && npm run dev   # dashboard on http://localhost:3100
-```
 
 ### Your profile, in the dashboard
 
@@ -93,9 +94,8 @@ your facts.
 - Saving validates the whole profile, keeps the previous version as
   `profile.yaml.bak`, and the next application uses the new facts.
 
-The first time you open the dashboard, a guide walks through setup with a live
-checklist (API running, desktop up, your own profile, API key present, jobs
-found). Reopen it any time from **How it works** in the header.
+The setup guide (**How it works** in the header) tracks the same checklist:
+API key, profile, companies, the agent's computer, and jobs found.
 
 - **Who's driving** is always shown at the top. **Pause** stops the agent before
   its next action; **Take over** hands you the mouse and keyboard in the live
@@ -217,7 +217,7 @@ LinkedIn and Indeed aren't supported. Their terms prohibit automated access.
 
 ## Submission modes
 
-Set in `settings.yaml` under `applicant.mode`:
+Set on the Settings page, under Applying:
 
 - `auto`: submit without asking when the fit score is at least
   `auto_submit_min_score` **and** the Verifier passes every draft. Anything

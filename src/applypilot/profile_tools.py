@@ -14,16 +14,14 @@ proposals the user accepts or ignores in the UI, then saves.
 from __future__ import annotations
 
 import io
-import os
 import re
-import tempfile
 import zipfile
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, Field
 
+from applypilot.config import write_yaml
 from applypilot.llm import LLM
 from applypilot.models import Fact, Profile
 
@@ -41,19 +39,7 @@ HEADER = """\
 
 def save_profile(path: Path, profile: Profile) -> None:
     """Write the profile, keeping the previous file as .bak. Atomic: never half-written."""
-    data = profile.model_dump(mode="json", exclude_none=True)
-    text = HEADER + "\n" + yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        path.with_name(path.name + ".bak").write_bytes(path.read_bytes())
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".profile-", suffix=".yaml")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(text)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    write_yaml(path, profile.model_dump(mode="json", exclude_none=True), HEADER)
 
 
 # ---- resume text --------------------------------------------------------------

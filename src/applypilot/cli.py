@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import Annotated
@@ -294,6 +295,87 @@ def serve(
 
     console.print(f"API on http://127.0.0.1:{port}  (dashboard: `cd web && npm run dev`)")
     uvicorn.run(create_app(profile, settings), host="127.0.0.1", port=port, log_level="warning")
+
+
+@app.command()
+def start(
+    port: int = 8765,
+    open_browser: Annotated[bool, typer.Option("--open/--no-open")] = True,
+) -> None:
+    """Start everything (the API, the dashboard, the agent's desktop) and open the dashboard.
+
+    This is what start-applypilot.cmd runs. Stop with Ctrl+C or by closing the window.
+    """
+    import socket
+    import subprocess
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    from applypilot.config import ensure_config_files
+    from applypilot.server import create_app
+
+    os.chdir(REPO)  # data/, .env and the config files all live in the project folder
+    web_port = 3100
+    url = f"http://localhost:{web_port}"
+
+    def port_open(p: int) -> bool:
+        with socket.socket() as s:
+            s.settimeout(0.3)
+            return s.connect_ex(("127.0.0.1", p)) == 0
+
+    if port_open(port):
+        console.print(f"ApplyPilot is already running. Opening {url}")
+        if open_browser:
+            webbrowser.open(url)
+        return
+
+    for created in ensure_config_files(REPO / "profile.yaml", REPO / "settings.yaml"):
+        console.print(f"[green]created[/] {created.name} (fill it in from the dashboard)")
+
+    npm = shutil.which("npm")
+    if npm is None:
+        console.print("[red]Node.js isn't installed.[/] Install it from nodejs.org, then run this again.")
+        raise typer.Exit(1)
+    web = REPO / "web"
+    if not (web / "node_modules").exists():
+        console.print("Installing the dashboard (first run only)…")
+        subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=web, check=True)
+    # The port is set in web/package.json (localhost only).
+    dashboard = subprocess.Popen([npm, "run", "dev"], cwd=web,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+    # Start the agent's desktop in the background if Docker is up; otherwise the
+    # dashboard's Start button handles it (and can launch Docker Desktop).
+    def desktop() -> None:
+        docker = shutil.which("docker")
+        if docker and subprocess.run([docker, "info"], capture_output=True).returncode == 0:
+            subprocess.run([docker, "compose", "-f", str(REPO / "docker-compose.yml"), "up", "-d"],
+                           capture_output=True)
+
+    threading.Thread(target=desktop, daemon=True).start()
+
+    def open_when_ready() -> None:
+        for _ in range(120):
+            if port_open(web_port) and port_open(port):
+                if open_browser:
+                    webbrowser.open(url)
+                console.print(f"\n[bold green]ApplyPilot is running:[/] {url}  (Ctrl+C to stop)")
+                return
+            time.sleep(0.5)
+
+    threading.Thread(target=open_when_ready, daemon=True).start()
+    console.print("Starting ApplyPilot…")
+    try:
+        uvicorn.run(create_app(REPO / "profile.yaml", REPO / "settings.yaml"),
+                    host="127.0.0.1", port=port, log_level="warning")
+    finally:
+        # npm starts node as a child; stop the whole tree.
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/PID", str(dashboard.pid), "/T", "/F"], capture_output=True)
+        else:
+            dashboard.terminate()
 
 
 def _print_events(store: Store, job_id: str | None, limit: int = 40) -> None:

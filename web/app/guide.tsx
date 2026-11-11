@@ -9,6 +9,7 @@ type Status = {
   api_key_set: boolean;
   example_profile: boolean;
   facts: number;
+  boards: number;
   jobs: number;
   mode: "auto" | "approve" | "draft";
 };
@@ -65,50 +66,49 @@ export function Guide() {
     dialog.current?.close();
   }
 
+  // Each step links to the page where it's done. Nothing here needs a terminal or a file.
+  const go = (href: string, label: string) => <a href={href} onClick={close}>{label}</a>;
   const steps: { done: boolean | null; title: string; how: React.ReactNode }[] = [
     {
       done: apiDown ? false : status ? true : null,
-      title: "Start the API",
-      how: <>In the project folder, run <code>uv run applypilot serve</code>. This page talks to it.</>,
-    },
-    {
-      done: status ? status.desktop_running : null,
-      title: "Start the agent’s computer",
-      how:
-        status?.backend === "local" ? (
-          <>You’re using the local browser, so there’s nothing to start.</>
-        ) : (
-          <>Run <code>uv run applypilot desktop up</code> (needs Docker). The first run builds it.</>
-        ),
-    },
-    {
-      done: status ? !status.example_profile : null,
-      title: "Fill in your profile",
-      how: !status ? (
-        <>Every claim the agent makes comes from this file.</>
-      ) : status.example_profile ? (
-        <>You’re still on the example profile. Open <a href="/profile">Profile</a> to import your resume
-          or add your experience as short, specific facts.</>
-      ) : (
-        <>{status.facts} facts loaded. The agent can only say what these facts say.</>
-      ),
+      title: "ApplyPilot is running",
+      how: apiDown
+        ? <>This page can’t reach it. Start it with <code>start-applypilot</code> in the project folder.</>
+        : <>Connected.</>,
     },
     {
       done: status ? status.api_key_set : null,
       title: "Add your Anthropic API key",
-      how: (
-        <>Put it in <code>.env</code> as <code>ANTHROPIC_API_KEY=…</code>. It stays on your machine:
-          the file is git-ignored and the key is never shown here or sent to this page.</>
-      ),
+      how: <>In {go("/settings", "Settings")}. It’s checked with Anthropic, kept only on this computer, and never
+        shown again.</>,
+    },
+    {
+      done: status ? !status.example_profile : null,
+      title: "Fill in your profile",
+      how: status && !status.example_profile
+        ? <>{status.facts} facts loaded. The agent can only say what these facts say.</>
+        : <>Open {go("/profile", "Profile")} and import your resume, or add your experience as short, specific facts.</>,
+    },
+    {
+      done: status ? status.boards > 0 : null,
+      title: "Choose companies to watch",
+      how: status?.boards
+        ? <>Watching {status.boards} job board{status.boards > 1 ? "s" : ""}. Change them in {go("/settings", "Settings")}.</>
+        : <>In {go("/settings", "Settings")}, add companies by name or careers link.</>,
+    },
+    {
+      done: status ? status.desktop_running : null,
+      title: "Start the agent’s computer",
+      how: status?.backend === "local"
+        ? <>You’ve chosen this computer’s browser, so there’s nothing to start.</>
+        : <>Press Start under “The agent’s browser” in {go("/settings", "Settings")}. The first time takes a few minutes.</>,
     },
     {
       done: status ? status.jobs > 0 : null,
       title: "Find jobs",
-      how: status?.jobs ? (
-        <>{status.jobs} jobs found. Run <code>uv run applypilot sweep</code> again any time.</>
-      ) : (
-        <>Add company job boards to <code>settings.yaml</code>, then run <code>uv run applypilot sweep</code>.</>
-      ),
+      how: status?.jobs
+        ? <>{status.jobs} jobs found. Press Find jobs on the {go("/", "Jobs")} page any time, or turn on automatic searches.</>
+        : <>Press Find jobs on the {go("/", "Jobs")} page.</>,
     },
   ];
 
@@ -154,7 +154,7 @@ export function Guide() {
           </li>
           <li>
             <strong>Submitting:</strong> you’re in <em>{status?.mode ?? "auto"}</em> mode, so it{" "}
-            {MODE_TEXT[status?.mode ?? "auto"]}. Change this in <code>settings.yaml</code>.
+            {MODE_TEXT[status?.mode ?? "auto"]}. Change this in Settings.
           </li>
         </ul>
 

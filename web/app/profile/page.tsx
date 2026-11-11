@@ -18,7 +18,7 @@ export default function ProfilePage() {
   useEffect(() => {
     api<Profile>("/api/profile")
       .then((p) => { setProfile(p); setSaved(JSON.stringify(p)); })
-      .catch((e) => setLoadError(`Can't reach the API. Start it with \`applypilot serve\`. (${e.message})`));
+      .catch((e) => setLoadError(`Can't reach ApplyPilot. Start it first. (${e.message})`));
     api<{ api_key_set: boolean }>("/api/status").then((s) => setAiAvailable(s.api_key_set)).catch(() => {});
   }, []);
 

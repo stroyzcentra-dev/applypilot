@@ -116,6 +116,27 @@ export type RefineResult = {
   rejected: string[];
 };
 
+// ---- settings & operations ----------------------------------------------------------
+
+export type Settings = {
+  sources: { greenhouse: string[]; lever: string[]; ashby: string[] };
+  matcher: { model: string; min_score_to_draft: number; max_scored_per_sweep: number };
+  applicant: { mode: "auto" | "approve" | "draft"; auto_submit_min_score: number; daily_submit_cap: number };
+  schedule: { enabled: boolean; sweep_every_hours: number };
+  automation: { backend: "docker" | "local"; accept_tos_risk_for: string[] } & Record<string, unknown>;
+} & Record<string, unknown>;
+export type SettingsView = { settings: Settings; api_key_set: boolean };
+export type BoardResult = { source: "greenhouse" | "lever" | "ashby" | null; token: string; jobs: number; message: string };
+export type Desktop = { running: boolean; backend: string; busy: boolean; message: string };
+export type Sweep = {
+  running: boolean; trigger: "you" | "schedule" | null; progress: string;
+  started_at: string | null; finished_at: string | null; error: string | null;
+  stats: { fetched: number; new: number; filtered_out: number; scored: number; ready: number;
+           below_threshold: number; score_failures: number; deferred: number;
+           source_errors: Record<string, string> } | null;
+  next_scheduled: string | null; scoring: boolean;
+};
+
 /** Thrown for 422s, carrying FastAPI's per-field errors keyed like "facts.2.text". */
 export class ValidationError extends Error {
   constructor(public fields: Record<string, string>) {

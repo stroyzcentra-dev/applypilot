@@ -20,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav>
             <Link href="/">Jobs</Link>
             <Link href="/profile">Profile</Link>
+            <Link href="/settings">Settings</Link>
             <Guide />
           </nav>
         </header>

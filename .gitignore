@@ -14,6 +14,8 @@ build/
 data/
 profile.yaml
 settings.yaml
+# Backups the dashboard keeps when it saves them
+*.bak
 *.db
 
 # Eval run outputs (contain drafts built from your profile)

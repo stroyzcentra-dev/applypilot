@@ -28,7 +28,7 @@ def test_transitions_are_enforced_and_logged(store):
     store.add_if_new(job())
     jid = job().id
     with pytest.raises(InvalidTransition):
-        store.transition(jid, S.SUBMITTED, actor="test")
+        store.transition(jid, S.OFFER, actor="test")
     store.transition(jid, S.WITHDRAWN, actor="user", note="not interested")
     with pytest.raises(InvalidTransition):
         store.transition(jid, S.DISCOVERED, actor="user")
