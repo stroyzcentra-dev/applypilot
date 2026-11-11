@@ -35,10 +35,10 @@ class Fact(BaseModel):
 
 
 class Person(BaseModel):
-    name: str
-    email: str
+    name: str = Field(min_length=1)
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     phone: str | None = None
-    location: str
+    location: str = Field(min_length=1)
     links: dict[str, HttpUrl] = Field(default_factory=dict)
     work_authorization: str | None = None
     needs_sponsorship: bool = False

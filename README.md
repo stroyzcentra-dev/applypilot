@@ -74,6 +74,25 @@ uv run applypilot serve          # API on :8765
 cd web && npm install && npm run dev   # dashboard on http://localhost:3100
 ```
 
+### Your profile, in the dashboard
+
+The **Profile** page edits everything in `profile.yaml` without touching YAML:
+contact details, what you're looking for, answers to common questions, and
+your facts.
+
+- **Start from your resume.** Upload a PDF, Word or text resume and Claude
+  proposes facts, one claim each. Code then checks every proposal against the
+  resume's own text: its quoted line must be in the resume, and so must every
+  number, company and year. Anything that fails is shown unticked with the
+  reason. Nothing is added until you choose, and nothing is saved until you
+  press Save.
+- **Refine with AI** on any fact suggests sharper wording or a split into
+  separate claims, and asks the questions that would make it stronger ("How
+  many requests per day?"). It never fills in numbers; suggestions that add one
+  are hidden.
+- Saving validates the whole profile, keeps the previous version as
+  `profile.yaml.bak`, and the next application uses the new facts.
+
 The first time you open the dashboard, a guide walks through setup with a live
 checklist (API running, desktop up, your own profile, API key present, jobs
 found). Reopen it any time from **How it works** in the header.

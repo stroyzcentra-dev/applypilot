@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="wordmark">ApplyPilot</Link>
           <nav>
             <Link href="/">Jobs</Link>
+            <Link href="/profile">Profile</Link>
             <Guide />
           </nav>
         </header>

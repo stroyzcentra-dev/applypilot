@@ -83,12 +83,12 @@ export function Guide() {
     },
     {
       done: status ? !status.example_profile : null,
-      title: "Put your real facts in profile.yaml",
+      title: "Fill in your profile",
       how: !status ? (
         <>Every claim the agent makes comes from this file.</>
       ) : status.example_profile ? (
-        <>You’re still on the example profile. Every claim the agent makes comes from this file, so
-          add your own experience as short, specific facts.</>
+        <>You’re still on the example profile. Open <a href="/profile">Profile</a> to import your resume
+          or add your experience as short, specific facts.</>
       ) : (
         <>{status.facts} facts loaded. The agent can only say what these facts say.</>
       ),

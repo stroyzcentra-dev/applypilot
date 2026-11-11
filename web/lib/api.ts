@@ -49,17 +49,121 @@ export type Config = {
   drafting: boolean;
 };
 
+// ---- profile -------------------------------------------------------------------
+
+export type FactKind = "experience" | "achievement" | "project" | "skill" | "education" | "other";
+
+export type Fact = {
+  id: string;
+  kind: FactKind;
+  text: string;
+  org?: string | null;
+  role?: string | null;
+  start?: string | null;
+  end?: string | null;
+  skills: string[];
+  evidence?: string | null;
+};
+
+export type Profile = {
+  person: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    location: string;
+    links: Record<string, string>;
+    work_authorization?: string | null;
+    needs_sponsorship: boolean;
+    resume_file?: string | null;
+  };
+  preferences: {
+    target_titles: string[];
+    avoid_title_keywords: string[];
+    locations: string[];
+    remote_ok: boolean;
+    min_base_salary_usd?: number | null;
+    exclude_companies: string[];
+    max_posting_age_days?: number | null;
+  };
+  answers: {
+    work_location?: string | null;
+    willing_to_relocate?: boolean | null;
+    relocation_targets: string[];
+    open_to_remote?: boolean | null;
+    earliest_start?: string | null;
+    salary_expectation?: string | null;
+    how_did_you_hear?: string | null;
+    self_identification: "decline" | "ask_me";
+    extra: Record<string, string>;
+  };
+  facts: Fact[];
+};
+
+export type ProposedFact = { fact: Fact; source_quote: string; verified: boolean; problems: string[] };
+export type ImportResult = {
+  contact: { name?: string | null; email?: string | null; phone?: string | null; location?: string | null;
+             links: Record<string, string> };
+  facts: ProposedFact[];
+  suggested_titles: string[];
+};
+export type RefineResult = {
+  refinement: {
+    verdict: "good" | "improve";
+    why: string;
+    suggestions: { text: string; kind: FactKind; skills: string[] }[];
+    questions: string[];
+  };
+  rejected: string[];
+};
+
+/** Thrown for 422s, carrying FastAPI's per-field errors keyed like "facts.2.text". */
+export class ValidationError extends Error {
+  constructor(public fields: Record<string, string>) {
+    super("Some fields need fixing");
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
     cache: "no-store",
   });
+  return handle<T>(res);
+}
+
+async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `${res.status} ${res.statusText}`);
+    if (res.status === 422 && Array.isArray(body.detail)) {
+      const fields: Record<string, string> = {};
+      for (const e of body.detail as { loc: (string | number)[]; msg: string }[]) {
+        const path = e.loc.slice(1).join(".");
+        fields[path] = friendly(path, e.msg.replace(/^Value error, /, ""));
+      }
+      throw new ValidationError(fields);
+    }
+    throw new Error(typeof body.detail === "string" ? body.detail : `${res.status} ${res.statusText}`);
   }
   return res.json();
+}
+
+/** Turn Pydantic's messages into ones a person can act on. */
+function friendly(path: string, msg: string): string {
+  if (path.endsWith("email") && msg.includes("pattern")) return "Enter an email address, like you@example.com.";
+  if (path.endsWith(".id") && msg.includes("pattern")) return "Ids use lowercase letters, numbers and dashes.";
+  if (msg.includes("at least 1 character")) return "Required.";
+  if (/at least 10 characters/.test(msg)) return "Write the full claim: at least 10 characters.";
+  if (msg.toLowerCase().includes("url")) return "Enter a full link, starting with https://.";
+  if (msg.includes("at least 1 item")) return "Add at least one.";
+  if (msg.startsWith("duplicate fact id")) return `Two facts share an id (${msg.split(": ")[1]}). Remove one.`;
+  return msg;
+}
+
+export async function upload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  return handle<T>(await fetch(`${API}${path}`, { method: "POST", body: form }));
 }
 
 export const control = (runId: string, action: string) =>

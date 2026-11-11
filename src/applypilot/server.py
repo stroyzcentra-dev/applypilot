@@ -21,8 +21,9 @@ from pydantic import BaseModel
 from applypilot.applicant.run import STARTABLE, Agents, Run, run_application
 from applypilot.config import Settings, load_profile, load_settings
 from applypilot.llm import LLM
-from applypilot.models import ApplicationStatus
+from applypilot.models import ApplicationStatus, Profile
 from applypilot.policy import decide
+from applypilot.profile_api import register_profile_routes
 from applypilot.store import JobRow, Store
 from applypilot.tailor import Tailor
 from applypilot.writer import Critic, Writer
@@ -56,18 +57,33 @@ def _run_json(run: Run) -> dict:
     }
 
 
-def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
+class AppState:
+    """The loaded profile and the agents built from it. Rebuilt when the profile is saved,
+    so the next run uses the new facts. A run already in progress keeps the old ones."""
+
+    def __init__(self, profile: Profile, llm: LLM | None):
+        self.llm = llm
+        self.set_profile(profile)
+
+    def set_profile(self, profile: Profile) -> None:
+        self.profile = profile
+        if self.llm is None:
+            self.agents = Agents()
+        else:
+            critic = Critic(self.llm, profile)
+            self.agents = Agents(writer=Writer(self.llm, profile), critic=critic,
+                                 tailor=Tailor(self.llm, critic, profile))
+
+
+def create_app(profile_path: Path, settings_path: Path, llm: LLM | None = None) -> FastAPI:
+    """`llm` is injectable for tests; otherwise one is created when an API key is set."""
     settings = load_settings(settings_path)
-    profile = load_profile(profile_path)
     store = Store(settings.database)
     runs: dict[str, Run] = {}
     tasks: set[asyncio.Task] = set()
-    agents = Agents()
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    if llm is None and os.environ.get("ANTHROPIC_API_KEY"):
         llm = LLM(model=settings.matcher.model)
-        critic = Critic(llm, profile)
-        agents = Agents(writer=Writer(llm, profile), critic=critic,
-                        tailor=Tailor(llm, critic, profile))
+    state = AppState(load_profile(profile_path), llm)
 
     app = FastAPI(title="ApplyPilot")
     app.add_middleware(
@@ -89,7 +105,7 @@ def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
     def config() -> dict:
         a = settings.automation
         return {"backend": a.backend, "novnc_url": a.novnc_url, "mode": settings.applicant.mode,
-                "drafting": agents.writer is not None}
+                "drafting": state.agents.writer is not None}
 
     @app.get("/api/status")
     async def status() -> dict:
@@ -107,9 +123,9 @@ def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
         return {
             "backend": settings.automation.backend,
             "desktop_running": desktop,
-            "api_key_set": agents.writer is not None,
-            "example_profile": profile.person.email.endswith("@example.com"),
-            "facts": len(profile.facts),
+            "api_key_set": state.llm is not None,
+            "example_profile": state.profile.person.email.endswith("@example.com"),
+            "facts": len(state.profile.facts),
             "jobs": sum(n for s, n in counts.items() if s != ApplicationStatus.FILTERED_OUT),
             "mode": settings.applicant.mode,
         }
@@ -135,7 +151,8 @@ def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
         run = Run(job_id=body.job_id)
         runs[run.id] = run
         task = asyncio.create_task(
-            run_application(run, store=store, settings=settings, profile=profile, agents=agents)
+            run_application(run, store=store, settings=settings, profile=state.profile,
+                            agents=state.agents)
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
@@ -174,6 +191,7 @@ def create_app(profile_path: Path, settings_path: Path) -> FastAPI:
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+    register_profile_routes(app, state, profile_path)
     return app
 
 
