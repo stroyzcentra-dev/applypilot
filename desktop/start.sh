@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Docker restarts this container in place (after a reboot, say), so /tmp and the
+# profile volume survive. Locks left by the previous run would stop the display
+# and Chromium from starting; nothing else is running yet, so they're all stale.
+rm -f "/tmp/.X${DISPLAY#:}-lock" "/tmp/.X11-unix/X${DISPLAY#:}"
+rm -f /home/agent/profile/SingletonLock /home/agent/profile/SingletonSocket /home/agent/profile/SingletonCookie
+
 Xvfb "$DISPLAY" -screen 0 "$SCREEN" -nolisten tcp &
 until xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 || [ -e /tmp/.X11-unix/X99 ]; do sleep 0.2; done
 
